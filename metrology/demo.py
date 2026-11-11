@@ -95,11 +95,90 @@ def demonstration():
             assert duplicate["reused"] is True
             assert window["windows"][0]["statistics"]["mean"] == "11.1"
             assert verification["observations"] == 3
+            gauge = _gauge_demonstration(app)
             return {
                 "ingestion": ingestion,
                 "duplicate_reused": duplicate["reused"],
                 "mean": window["windows"][0]["statistics"]["mean"],
                 "snapshot": snapshot,
                 "export_verified": verification,
+                "gauge_study": gauge,
                 "integrity": integrity,
             }
+
+
+def _gauge_demonstration(app):
+    """Crossed gauge R&R with three operators, three parts and two trials."""
+    parts = ["part-a", "part-b", "part-c"]
+    operators = ["op-1", "op-2", "op-3"]
+    app.gauge_studies.plan(
+        {
+            "id": "grr-demo",
+            "instrument": "press-1",
+            "channel": "p",
+            "start": "2026-11-11T00:00:00Z",
+            "end": "2026-11-12T00:00:00Z",
+            "parts": parts,
+            "operators": operators,
+            "replicates": 2,
+            "sources": ["bench"],
+            "tolerance_width": "20",
+            "process_variation": "8",
+        }
+    )
+    app.gauge_studies.start("grr-demo", 1)
+    part_offset = {"part-a": 0, "part-b": 4, "part-c": 8}
+    operator_offset = {"op-1": 0, "op-2": 0.5, "op-3": 1}
+    values = []
+    sequence = 100
+    for part in parts:
+        for operator in operators:
+            for replicate in (1, 2):
+                sequence += 1
+                value = (
+                    10
+                    + part_offset[part]
+                    + operator_offset[operator]
+                    + (0.1 if replicate == 2 else 0)
+                )
+                values.append(
+                    {
+                        "id": f"gr{sequence}",
+                        "source": "bench",
+                        "sequence": sequence,
+                        "instrument": "press-1",
+                        "channel": "p",
+                        "event_time": f"2026-11-11T01:{sequence % 60:02d}:00Z",
+                        "value": str(value),
+                        "unit": "kPa",
+                        "uncertainty": "0",
+                        "tags": {
+                            "lot": "synthetic-A",
+                            "part": part,
+                            "operator": operator,
+                            "replicate": str(replicate),
+                        },
+                    }
+                )
+    rows = read_jsonl("\n".join(json.dumps(value) for value in values))
+    app.pipeline.ingest("grr-demo-batch", rows, received_at="2026-11-12T01:00:00Z")
+    for value in values:
+        app.gauge_studies.bind("grr-demo", value["id"])
+    completeness = app.gauge_studies.completeness("grr-demo")
+    assert completeness["balanced"]
+    app.gauge_studies.submit("grr-demo", 2)
+    decided = app.gauge_studies.decide(
+        "grr-demo", 3, "lead-metrologist", True, "Gauge variation within budget"
+    )
+    report = decided["report"]
+    return {
+        "state": decided["state"],
+        "balanced": completeness["balanced"],
+        "bound_observations": completeness["bound_observations"],
+        "gauge_percent_vs_tolerance": report["formula_evaluation"][
+            "contributions"
+        ]["gauge"]["percent_vs_tolerance"],
+        "interaction_pooled": report["formula_evaluation"]["interaction"][
+            "pooled_into_repeatability"
+        ],
+    }

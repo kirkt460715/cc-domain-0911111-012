@@ -76,6 +76,24 @@ class Inspector:
             maximum = maximum if maximum is not None else -1
             if row["high_sequence"] != maximum:
                 errors.append({"id": row["id"], "code": "sequence_high_water"})
+        for row in self.db.rows(
+            "SELECT * FROM gauge_bindings ORDER BY study,observation"
+        ):
+            active = self.db.one(
+                "SELECT revision FROM results WHERE observation=? AND active=1",
+                (row["observation"],),
+            )
+            if active is None:
+                errors.append(
+                    {"id": row["observation"], "code": "gauge_binding_missing_result"}
+                )
+            study = self.db.one(
+                "SELECT id FROM gauge_studies WHERE id=?", (row["study"],)
+            )
+            if study is None:
+                errors.append(
+                    {"id": row["observation"], "code": "gauge_binding_orphan_study"}
+                )
         if errors:
             raise IntegrityError(
                 "application invariants failed", details={"violations": errors}
@@ -130,6 +148,9 @@ class Inspector:
             "replays": ("id",),
             "windows": ("id",),
             "snapshots": ("id",),
+            "gauge_studies": ("id",),
+            "gauge_bindings": ("study", "observation"),
+            "gauge_attempts": ("study", "observation"),
         }
         for table, keys in tables.items():
             rows = self.db.rows(

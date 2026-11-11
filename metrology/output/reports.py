@@ -240,4 +240,10 @@ class Reports:
         counts["quarantines"] = self.db.one("SELECT COUNT(*) AS n FROM quarantines")[
             "n"
         ]
+        counts["gauge_studies"] = self.db.one(
+            "SELECT COUNT(*) AS n FROM gauge_studies"
+        )["n"]
+        counts["gauge_bindings"] = self.db.one(
+            "SELECT COUNT(*) AS n FROM gauge_bindings"
+        )["n"]
         return counts

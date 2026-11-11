@@ -162,6 +162,34 @@ def dispatch(app, request):
         return app.replay_plans.execute(options["id"])
     if action == "replay_status":
         return app.replay_plans.get(options["id"])
+    if action == "gauge_plan":
+        return app.gauge_studies.plan(options["specification"])
+    if action == "gauge_start":
+        return app.gauge_studies.start(options["id"], options["revision"])
+    if action == "gauge_bind":
+        return app.gauge_studies.bind(options["id"], options["observation"])
+    if action == "gauge_bindings":
+        return app.gauge_studies.bindings(options["id"])
+    if action == "gauge_attempts":
+        return app.gauge_studies.attempts(options["id"])
+    if action == "gauge_completeness":
+        return app.gauge_studies.completeness(options["id"])
+    if action == "gauge_analyze":
+        return app.gauge_studies.analyze(options["id"])
+    if action == "gauge_submit":
+        return app.gauge_studies.submit(options["id"], options["revision"])
+    if action == "gauge_freeze":
+        return app.gauge_studies.freeze_diagnostics(options["id"], options["revision"])
+    if action == "gauge_decide":
+        return app.gauge_studies.decide(
+            options["id"],
+            options["revision"],
+            options["reviewer"],
+            options["approved"],
+            options["reason"],
+        )
+    if action == "gauge_study":
+        return app.gauge_studies.get(options["id"])
     if action == "crosscheck":
         from .processing.crosscheck import PairedChannels
 

@@ -8,6 +8,7 @@ from .configuration import Configuration
 from .inspection import Inspector
 from .processing.campaigns import Campaigns
 from .processing.replay_plan import ReplayPlanner
+from .processing.gauge_studies import GaugeStudies
 from .output.bundles import EvidenceBundles
 
 
@@ -22,6 +23,9 @@ class Service:
         self.configuration = Configuration(self.database, self.catalog)
         self.campaigns = Campaigns(self.database, self.catalog, self.reports)
         self.replay_plans = ReplayPlanner(self.database, self.pipeline, self.catalog)
+        self.gauge_studies = GaugeStudies(
+            self.database, self.catalog, self.pipeline
+        )
         self.bundles = EvidenceBundles(self.snapshots, self.campaigns)
         self.inspector = Inspector(self.database)
 
